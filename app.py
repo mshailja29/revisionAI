@@ -2,6 +2,7 @@ import streamlit as st
 from revisionai import build_revision_ai_output
 import os
 import tempfile
+import json
 
 # Initialize session_state variables
 if 'quizzes' not in st.session_state:
@@ -52,7 +53,17 @@ st.session_state.active_tab = selected_tab
 if selected_tab == "Summary":
     st.header("Summary")
     if st.session_state['output']:
-        st.write(st.session_state['output'].get("summary", ""))
+        # st.write(st.session_state['output'].get("summary", ""))
+        raw_summary = st.session_state['output'].get("summary", "")
+        summary_data = json.loads(raw_summary)  # Convert string to dict
+        st.write(summary_data.get("summary", ""))
+
+        web_links = summary_data.get("web_links", [])
+        if web_links:
+            st.markdown("#### 🔗 Related Links")
+            for url in web_links:
+                st.markdown(f"- [{url}]({url})", unsafe_allow_html=True)
+
 
 elif selected_tab == "Flashcards":
     st.header("Flashcards")

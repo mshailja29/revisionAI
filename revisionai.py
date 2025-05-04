@@ -29,7 +29,10 @@ def query_gpt(prompt, task="summary"):
 # }
 
     system_prompts = {
-    "summary": "Summarize the given text into a concise paragraph.",
+    "summary": '''Summarize the given text into a concise paragraph. Also do a web search to find links related to the content 
+    web_links:[link1,link2,link3....]
+    
+    ''',
     "flashcard": """Create exactly 5 flashcards from the given text.
 Each flashcard must have the following fields:
 - "question": the flashcard question
@@ -44,13 +47,16 @@ Return ONLY the JSON array of quiz questions without any explanation."""
 }
 
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": system_prompts[task]},
-            {"role": "user", "content": prompt}
-        ]
+            {"role": "user", "content": prompt+'Return in JSON format only'}
+        ],
+        response_format= {"type":"json_object"},
+        temperature= 0.8
     )
-    return completion.choices[0].message.content.strip()
+    # print("RDDD ",type(completion.choices[0].message))
+    return completion.choices[0].message.content
 def clean_json_string(gpt_output):
     """Extract JSON array from messy GPT output."""
     match = re.search(r'(\[.*\])', gpt_output, re.DOTALL)
@@ -64,6 +70,7 @@ def build_revision_ai_output(pdf_path, title="Document"):
     
     # Get summary (just text)
     summary_text = query_gpt(extracted_text, task="summary")
+    print(type(summary_text),summary_text)
     
     # Get flashcards (as JSON array)
     flashcards_json_str = query_gpt(extracted_text, task="flashcard")
