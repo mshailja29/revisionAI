@@ -39,21 +39,30 @@ if uploaded_file is not None and not st.session_state['callGPT']:
     st.session_state['output'] = build_revision_ai_output(st.session_state['tmp_path'], title=uploaded_file.name)
     st.session_state['callGPT'] = True
 
-tabs = st.tabs(["Summary", "Flashcards", "Quiz"])
+# Use st.radio to simulate tabs with persistent state
+tab_labels = ["Summary", "Flashcards", "Quiz"]
 
-with tabs[0]:
+if "active_tab" not in st.session_state:
+    st.session_state.active_tab = "Summary"
+
+selected_tab = st.radio("Select Tab", tab_labels, index=tab_labels.index(st.session_state.active_tab), horizontal=True)
+
+st.session_state.active_tab = selected_tab
+
+if selected_tab == "Summary":
     st.header("Summary")
     if st.session_state['output']:
         st.write(st.session_state['output'].get("summary", ""))
 
-with tabs[1]:
+elif selected_tab == "Flashcards":
     st.header("Flashcards")
     if st.session_state['output']:
         for i, flashcard in enumerate(st.session_state['output'].get("flashcards", [])):
             st.subheader(f"Q: {flashcard['question']}")
             st.write(f"**A:** {flashcard['answer']}")
 
-with tabs[2]:
+
+elif selected_tab == "Quiz":
     st.header("📝 Quiz")
     if st.session_state['output']:
         for i, quiz in enumerate(st.session_state['output'].get("quizzes", [])):
@@ -71,7 +80,6 @@ with tabs[2]:
                 args=(selected_key, quiz["answer"])
             )
 
-            # Now display the result
             if f"{selected_key}_result" in st.session_state['quizzes']:
                 if st.session_state['quizzes'][f"{selected_key}_result"] == "correct":
                     st.success(f"✅ Correct! Your answer: {st.session_state[selected_key]}")
