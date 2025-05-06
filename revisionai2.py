@@ -35,22 +35,60 @@ Avoid yes/no questions. Prioritize fact-based or concept-checking questions over
 
 ### Output Format:
 Return only valid JSON, without markdown, explanations, or labels. The format must match:
-
-{
-  "summary": "string",
-  "web_links": ["string", "..."],
-  "flashcards": [
-    {"question": "string", "answer": "string"}
-  ],
-  "quizzes": [
-    {
-      "question": "string",
-      "options": ["string", "string", "string", "string"],
-      "answer": "string"
-    }
-  ]
-}
 """
+
+response_format = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "study_materials",
+        "strict": True,
+        "description": "Study materials including summary, web links, flashcards, and quizzes",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "summary": {
+                    "type": "string"
+                },
+                "web_links": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                },
+                "flashcards": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "question": { "type": "string" },
+                            "answer": { "type": "string" }
+                        },
+                        "required": ["question", "answer"],
+                        "additionalProperties": False
+                    }
+                },
+                "quizzes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "question": { "type": "string" },
+                            "options": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                            },
+                            "answer": { "type": "string" }
+                        },
+                        "required": ["question", "options", "answer"],
+                        "additionalProperties": False
+                    }
+                }
+            },
+            "required": ["summary", "web_links", "flashcards", "quizzes"],
+            "additionalProperties": False
+        }
+    }
+}
 
 def extract_text_from_pdf(pdf_path):
     text = ""
@@ -69,8 +107,9 @@ def one_shot_query(text):
             {"role": "user", "content": text}
         ],
         temperature=0.7,
-        response_format={"type": "json_object"}  # <-- Ensures JSON output
+        response_format= response_format# <-- Ensures JSON output
     )
+    # print(completion.choices[0].message.content)
     return json.loads(completion.choices[0].message.content)
 
 def fetch_ocw_text_from_url(ocw_url):
