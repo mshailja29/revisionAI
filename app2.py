@@ -1,7 +1,8 @@
 import streamlit as st
-from revisionai import build_revision_ai_output
+from revisionai2 import build_revision_ai_output
 import os
 import tempfile
+import json
 
 # Initialize session_state variables
 if 'quizzes' not in st.session_state:
@@ -28,33 +29,61 @@ st.set_page_config(page_title="Revision AI", page_icon="📚", layout="wide")
 st.title("Revision AI - Study Smarter!")
 
 uploaded_file = st.file_uploader("Upload a Course PDF", type=["pdf"])
+st.markdown("---")
+st.subheader("🌐 Option 2: Use MIT OCW Course URL")
+ocw_url = st.text_input("Paste a course or lecture page URL from https://ocw.mit.edu")
 
-# Handle uploaded file
-if uploaded_file is not None and not st.session_state['callGPT']:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        tmp_file.write(uploaded_file.read())
-        st.session_state['tmp_path'] = tmp_file.name
+try:
+    # Handle uploaded PDF
+    if uploaded_file and not st.session_state['callGPT']:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            tmp_file.write(uploaded_file.read())
+            st.session_state['tmp_path'] = tmp_file.name
 
-    st.success("PDF uploaded successfully! Processing...")
-    st.session_state['output'] = build_revision_ai_output(st.session_state['tmp_path'], title=uploaded_file.name)
-    st.session_state['callGPT'] = True
+        with st.spinner("Generating study materials from uploaded PDF..."):
+            st.session_state['output'] = build_revision_ai_output(st.session_state['tmp_path'], title=uploaded_file.name)
+            st.session_state['callGPT'] = True
 
-tabs = st.tabs(["Summary", "Flashcards", "Quiz"])
+    # Handle OCW URL
+    elif ocw_url and not st.session_state['callGPT']:
+        with st.spinner("Generating study materials from OCW URL..."):
+            st.session_state['output'] = build_revision_ai_output(ocw_url, title="MIT OCW", is_url=True)
+            st.session_state['callGPT'] = True
+except Exception as e:
+    st.error(f"An error occurred: {e}")
 
-with tabs[0]:
+# Use st.radio to simulate tabs with persistent state
+tab_labels = ["Summary", "Flashcards", "Quiz"]
+
+if "active_tab" not in st.session_state:
+    st.session_state.active_tab = "Summary"
+
+selected_tab = st.radio("Select Tab", tab_labels, index=tab_labels.index(st.session_state.active_tab), horizontal=True)
+
+st.session_state.active_tab = selected_tab
+
+if selected_tab == "Summary":
     st.header("Summary")
     if st.session_state['output']:
-        st.write(st.session_state['output'].get("summary", ""))
+        raw_summary = st.session_state['output'].get("summary", "")
+        summary_data = json.loads(raw_summary)
+        st.write(summary_data.get("summary", ""))
 
-with tabs[1]:
+        web_links = summary_data.get("web_links", [])
+        if web_links:
+            st.markdown("#### Related Links")
+            for url in web_links:
+                st.markdown(f"- [{url}]({url})", unsafe_allow_html=True)
+
+elif selected_tab == "Flashcards":
     st.header("Flashcards")
     if st.session_state['output']:
         for i, flashcard in enumerate(st.session_state['output'].get("flashcards", [])):
             st.subheader(f"Q: {flashcard['question']}")
             st.write(f"**A:** {flashcard['answer']}")
 
-with tabs[2]:
-    st.header("📝 Quiz")
+elif selected_tab == "Quiz":
+    st.header("📜 Quiz")
     if st.session_state['output']:
         for i, quiz in enumerate(st.session_state['output'].get("quizzes", [])):
             st.subheader(quiz["question"])
@@ -71,7 +100,6 @@ with tabs[2]:
                 args=(selected_key, quiz["answer"])
             )
 
-            # Now display the result
             if f"{selected_key}_result" in st.session_state['quizzes']:
                 if st.session_state['quizzes'][f"{selected_key}_result"] == "correct":
                     st.success(f"✅ Correct! Your answer: {st.session_state[selected_key]}")
