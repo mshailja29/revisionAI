@@ -50,7 +50,7 @@ try:
             st.session_state['output'] = build_revision_ai_output(ocw_url, title="MIT OCW", is_url=True)
             st.session_state['callGPT'] = True
 except Exception as e:
-    st.error(f"❌ An error occurred: {e}")
+    st.error(f"An error occurred: {e}")
 
 # Use st.radio to simulate tabs with persistent state
 tab_labels = ["Summary", "Flashcards", "Quiz"]
@@ -71,7 +71,7 @@ if selected_tab == "Summary":
 
         web_links = summary_data.get("web_links", [])
         if web_links:
-            st.markdown("#### 🔗 Related Links")
+            st.markdown("#### Related Links")
             for url in web_links:
                 st.markdown(f"- [{url}]({url})", unsafe_allow_html=True)
 

@@ -24,7 +24,7 @@ You are a study assistant. Given a passage of academic or technical text, extrac
 3. "flashcards" - Exactly 5 flashcards, each with:
    - "question": a short, factual question
    - "answer": a brief, direct answer
-4. "quizzes" – A list of exactly 5 multiple-choice questions. Each item must be a dictionary with:
+4. "quizzes" - A list of exactly 5 multiple-choice questions. Each item must be a dictionary with:
    - "question": a clearly worded, self-contained question that tests understanding of a key point in the passage
    - "options": an array of exactly 4 plausible and distinct answer choices (labeled A, B, C, D not required)
      - Ensure that at least two distractors (wrong answers) are reasonable but clearly incorrect
@@ -74,7 +74,7 @@ def one_shot_query(text):
     return json.loads(completion.choices[0].message.content)
 
 def fetch_ocw_text_from_url(ocw_url):
-    print("📅 Fetching course materials from:", ocw_url)
+    print("Fetching course materials from:", ocw_url)
     response = requests.get(ocw_url)
     soup = BeautifulSoup(response.content, "html.parser")
 
@@ -98,24 +98,62 @@ def fetch_ocw_text_from_url(ocw_url):
 
             text_content += "\n" + extract_text_from_pdf(tmp_path)
         except Exception as e:
-            print(f"⚠️ Could not download PDF: {pdf_url} — {e}")
+            print(f"Could not download PDF: {pdf_url} — {e}")
 
     return text_content.strip()
 
+# def build_revision_ai_output(input, title="Document", is_url=False):
+#     if is_url:
+#         extracted_text = fetch_ocw_text_from_url(input)
+#     else:
+#         extracted_text = extract_text_from_pdf(input)
+
+#     result = one_shot_query(extracted_text)
+
+#     return {
+#         "title": title,
+#         "summary": json.dumps({
+#             "summary": result.get("summary", ""),
+#             "web_links": result.get("web_links", [])
+#         }),
+#         "flashcards": result.get("flashcards", []),
+#         "quizzes": result.get("quizzes", [])
+#     }
 def build_revision_ai_output(input, title="Document", is_url=False):
-    if is_url:
-        extracted_text = fetch_ocw_text_from_url(input)
-    else:
-        extracted_text = extract_text_from_pdf(input)
+    try:
+        if is_url:
+            if input.lower().endswith(".pdf"):
+                print("Detected direct PDF link. Downloading...")
+                response = requests.get(input)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                    tmp_file.write(response.content)
+                    tmp_path = tmp_file.name
+                extracted_text = extract_text_from_pdf(tmp_path)
+            else:
+                print("Detected OCW HTML page. Scraping...")
+                extracted_text = fetch_ocw_text_from_url(input)
+        else:
+            extracted_text = extract_text_from_pdf(input)
 
-    result = one_shot_query(extracted_text)
+        if not extracted_text:
+            raise ValueError("No text extracted from input.")
 
-    return {
-        "title": title,
-        "summary": json.dumps({
-            "summary": result.get("summary", ""),
-            "web_links": result.get("web_links", [])
-        }),
-        "flashcards": result.get("flashcards", []),
-        "quizzes": result.get("quizzes", [])
-    }
+        result = one_shot_query(extracted_text)
+
+        return {
+            "title": title,
+            "summary": json.dumps({
+                "summary": result.get("summary", ""),
+                "web_links": result.get("web_links", [])
+            }),
+            "flashcards": result.get("flashcards", []),
+            "quizzes": result.get("quizzes", [])
+        }
+    except Exception as e:
+        print(f"Error in build_revision_ai_output: {e}")
+        return {
+            "title": title,
+            "summary": json.dumps({"summary": "Error generating content.", "web_links": []}),
+            "flashcards": [],
+            "quizzes": []
+        }
