@@ -39,3 +39,5 @@ Powered by OpenAI's GPT-4o
    OPENAI_API_KEY=your_openai_key
 
 5. streamlit run app2.py
+
+Demo Link: https://youtu.be/8QhWVnN0H_w
